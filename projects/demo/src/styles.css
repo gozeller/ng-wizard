@@ -1,0 +1,7 @@
+/* You can add global styles to this file, and also import other style files */
+@import 'bootstrap/dist/css/bootstrap.css';
+
+@import "../../../dist/ng-wizard/themes/ng_wizard.css";
+@import "../../../dist/ng-wizard/themes/ng_wizard_theme_arrows.css";
+@import "../../../dist/ng-wizard/themes/ng_wizard_theme_circles.css";
+@import "../../../dist/ng-wizard/themes/ng_wizard_theme_dots.css";

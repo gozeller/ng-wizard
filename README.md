@@ -1,4 +1,20 @@
 # ng-wizard
+
+This is a fork of <https://github.com/abdulkadirgenc/ng-wizard> with some improvements for Angular 15 and Bootstrap 5.3
+
+This library was generated with [Angular CLI](https://github.com/angular/angular-cli) version 15.2.0
+
+Installation:
+
+```
+$ npm install @gozella/ng-wizard
+```
+
+## Todos
+
++ make it use (bootstrap) css variables or switch to scss
+
+# ng-wizard - original README.md content:
 ng-wizard is a stepper / wizard component that you can use in your Angular applications. You can access the sample demo project **[by clicking here](https://ng-wizard.stackblitz.io)**.
 
 ## Screenshots

@@ -1,0 +1,42 @@
+{
+  "name": "@gozella/ng-wizard",
+  "description": "Angular ng-wizard FORK - Angular wizard | stepper, Angular 15, Bootstrap 5.3",
+  "version": "2.0.10",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gozeller/ng-wizard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gozeller/ng-wizard/issues"
+  },
+  "author": "Abdulkadir Genç <gencakadir@gmail.com>",
+  "contributors": [
+    "Martin Zeller <me@mzeller.dev>"
+  ],
+  "homepage": "https://github.com/gozeller/ng-wizard/ng-wizard",
+  "license": "MIT",
+  "private": false,
+  "peerDependencies": {
+    "@angular/common": "^15.2.0",
+    "@angular/core": "^15.2.0"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "sideEffects": false,
+  "keywords": [
+    "angular",
+    "wizard",
+    "stepper",
+    "ng-wizard",
+    "wizard-component",
+    "stepper-component",
+    "step-wizard",
+    "bootstrap"
+  ],
+  "exports": {
+    "./themes/*.css": {
+      "default": "./themes/*.css"
+    }
+  }
+}
