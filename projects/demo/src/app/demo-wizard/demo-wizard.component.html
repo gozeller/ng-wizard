@@ -1,10 +1,13 @@
 <div class="container">
   <div class="form-group mb-2">
     <ng-wizard [config]="config" (stepChanged)="stepChanged($event)">
-      <ng-wizard-step *ngFor="let stepDefinition of stepDefinitions" [title]="stepDefinition.title"
-        [description]="stepDefinition.description" [state]="stepDefinition.state" [component]="stepDefinition.component"
-        [canEnter]="stepDefinition.canEnter" [canExit]="stepDefinition.canExit">
-      </ng-wizard-step>
+      @for (stepDefinition of stepDefinitions; track stepDefinition.title) {
+        <ng-wizard-step [title]="stepDefinition.title"
+          [description]="stepDefinition.description" [state]="stepDefinition.state"
+          [component]="stepDefinition.component"
+          [canEnter]="stepDefinition.canEnter" [canExit]="stepDefinition.canExit">
+        </ng-wizard-step>
+      }
 
       <ng-wizard-step [title]="'Step 6'" [description]="'Step 6 description'" [state]="stepStates.error">
         <app-step-six></app-step-six>
@@ -27,10 +30,14 @@
         </button>
         <button type="button" (click)="resetWizard($event)" class="btn btn-danger">Reset</button>
         <select [(ngModel)]="selectedTheme" (change)="themeSelected()">
-          <option *ngFor="let theme of themes" [ngValue]="theme">{{ theme }}</option>
+          @for (theme of themes; track theme) {
+            <option [ngValue]="theme">{{ theme }}</option>
+          }
         </select>
         <select [(ngModel)]="selectedStepIndex" (change)="stepIndexSelected()">
-          <option *ngFor="let stepIndex of stepIndexes" [ngValue]="stepIndex">{{ 'Step - ' + (stepIndex + 1) }}</option>
+          @for (stepIndex of stepIndexes; track stepIndex) {
+            <option [ngValue]="stepIndex">{{ 'Step - ' + (stepIndex + 1) }}</option>
+          }
         </select>
       </div>
     </div>

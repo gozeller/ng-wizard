@@ -1,9 +1,9 @@
-import { Injectable, Optional, Inject } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { Subject, Observable } from 'rxjs';
 
 import { DEFAULT_CONFIG } from '../utils/constants';
 import { NG_WIZARD_CONFIG_TOKEN } from './ng-wizard-config.token';
-import {NgWizardConfig, NgWizardOptions, StepChangedArgs} from '../utils/interfaces';
+import { NgWizardConfig, StepChangedArgs } from '../utils/interfaces';
 import { THEME } from '../utils/enums';
 import { merge } from '../utils/functions';
 
@@ -11,42 +11,35 @@ import { merge } from '../utils/functions';
   providedIn: 'root'
 })
 export class NgWizardDataService {
-  resetWizard$: Observable<void>;
-  showNextStep$: Observable<void>;
-  showPreviousStep$: Observable<void>;
-  showStep$: Observable<number>;
-  setTheme$: Observable<THEME>;
-  stepChangedArgs$: Observable<StepChangedArgs>;
+  private readonly config = inject(NG_WIZARD_CONFIG_TOKEN, { optional: true });
 
-  private _resetWizard: Subject<void>;
-  private _showNextStep: Subject<void>;
-  private _showPreviousStep: Subject<void>;
-  private _showStep: Subject<number>;
-  private _setTheme: Subject<THEME>;
-  private _stepChangedArgs: Subject<StepChangedArgs>;
-  private _defaultConfig: NgWizardConfig;
+  // Command streams (fire-and-forget)
+  private readonly _resetWizard = new Subject<void>();
+  private readonly _showNextStep = new Subject<void>();
+  private readonly _showPreviousStep = new Subject<void>();
+  private readonly _showStep = new Subject<number>();
+  private readonly _setTheme = new Subject<THEME>();
 
-  constructor(@Optional() @Inject(NG_WIZARD_CONFIG_TOKEN) private config: NgWizardOptions) {
+  readonly resetWizard$: Observable<void> = this._resetWizard.asObservable();
+  readonly showNextStep$: Observable<void> = this._showNextStep.asObservable();
+  readonly showPreviousStep$: Observable<void> = this._showPreviousStep.asObservable();
+  readonly showStep$: Observable<number> = this._showStep.asObservable();
+  readonly setTheme$: Observable<THEME> = this._setTheme.asObservable();
+
+  // Step changed state as a signal
+  readonly stepChangedArgs = signal<StepChangedArgs | null>(null);
+
+  // Keep observable for backward compat
+  private readonly _stepChangedArgs = new Subject<StepChangedArgs>();
+  readonly stepChangedArgs$: Observable<StepChangedArgs> = this._stepChangedArgs.asObservable();
+
+  private readonly _defaultConfig: NgWizardConfig;
+
+  constructor() {
     this._defaultConfig = { ...DEFAULT_CONFIG };
     if (this.config) {
       this._defaultConfig = merge(this._defaultConfig, this.config);
     }
-
-    // Observable sources
-    this._resetWizard = new Subject<void>();
-    this._showNextStep = new Subject<void>();
-    this._showPreviousStep = new Subject<void>();
-    this._showStep = new Subject<number>();
-    this._setTheme = new Subject<THEME>();
-    this._stepChangedArgs = new Subject<StepChangedArgs>();
-
-    // Observable streams
-    this.resetWizard$ = this._resetWizard.asObservable();
-    this.showNextStep$ = this._showNextStep.asObservable();
-    this.showPreviousStep$ = this._showPreviousStep.asObservable();
-    this.showStep$ = this._showStep.asObservable();
-    this.setTheme$ = this._setTheme.asObservable();
-    this.stepChangedArgs$ = this._stepChangedArgs.asObservable();
   }
 
   getDefaultConfig(): NgWizardConfig {
@@ -74,6 +67,7 @@ export class NgWizardDataService {
   }
 
   stepChanged(args: StepChangedArgs) {
+    this.stepChangedArgs.set(args);
     this._stepChangedArgs.next(args);
   }
 }

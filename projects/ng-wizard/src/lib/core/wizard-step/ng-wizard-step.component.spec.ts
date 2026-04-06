@@ -1,25 +1,28 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Component, provideZonelessChangeDetection } from '@angular/core';
 
 import { NgWizardStepComponent } from './ng-wizard-step.component';
 
+@Component({
+  imports: [NgWizardStepComponent],
+  template: '<ng-wizard-step title="Test Step"><span>Test content</span></ng-wizard-step>',
+})
+class TestHostComponent {}
+
 describe('NgWizardStepComponent', () => {
-  let component: NgWizardStepComponent;
-  let fixture: ComponentFixture<NgWizardStepComponent>;
+  let fixture: ComponentFixture<TestHostComponent>;
 
-  beforeEach(async(() => {
-    TestBed.configureTestingModule({
-      declarations: [ NgWizardStepComponent ]
-    })
-    .compileComponents();
-  }));
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [TestHostComponent],
+      providers: [provideZonelessChangeDetection()],
+    }).compileComponents();
 
-  beforeEach(() => {
-    fixture = TestBed.createComponent(NgWizardStepComponent);
-    component = fixture.componentInstance;
+    fixture = TestBed.createComponent(TestHostComponent);
     fixture.detectChanges();
   });
 
   it('should create', () => {
-    expect(component).toBeTruthy();
+    expect(fixture.componentInstance).toBeTruthy();
   });
 });

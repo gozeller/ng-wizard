@@ -3,7 +3,9 @@
  */
 
 export { NgWizardService } from './lib/core/ng-wizard.service';
-export { NgWizardModule } from './lib/core/ng-wizard.module';
+export { provideNgWizard } from './lib/core/provide-ng-wizard';
+export { NG_WIZARD_CONFIG_TOKEN } from './lib/core/ng-wizard-config.token';
+export { NgWizardStepContentDirective } from './lib/core/ng-wizard-step-content.directive';
 export {
   TOOLBAR_POSITION,
   TOOLBAR_BUTTON_POSITION,
@@ -19,10 +21,11 @@ export {
   AnchorSettings,
   NgWizardConfig,
   NgWizardOptions,
-  NgWizardStep,
+  NgWizardStepData,
   StepValidationArgs,
   StepChangedArgs,
-  CanEnterExistArgs
+  CanEnterExitArgs,
+  CanEnterExistArgs,
 } from './lib/utils/interfaces'
 export { NgWizardComponent } from './lib/core/wizard/ng-wizard.component';
 export { NgWizardStepComponent } from './lib/core/wizard-step/ng-wizard-step.component';

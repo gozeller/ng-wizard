@@ -1,493 +1,366 @@
-import { Component, AfterContentInit, Input, OnDestroy, EventEmitter, Output, ContentChildren, QueryList } from '@angular/core';
-import {isObservable, lastValueFrom, Observable, of, Subscription} from 'rxjs';
+import {
+  Component, AfterContentInit, ChangeDetectionStrategy,
+  input, output, contentChildren, signal, computed, inject,
+} from '@angular/core';
+import { NgClass } from '@angular/common';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { isObservable, lastValueFrom, Observable, of } from 'rxjs';
 
 import { NgWizardDataService } from '../ng-wizard-data.service';
 import {
   NgWizardConfig,
-  NgWizardStep,
   ToolbarButton,
   StepChangedArgs,
-  NgWizardOptions, CanEnterExistArgs
+  NgWizardOptions,
+  CanEnterExitArgs,
 } from '../../utils/interfaces';
 import { TOOLBAR_POSITION, STEP_STATE, STEP_STATUS, THEME, STEP_DIRECTION, STEP_POSITION } from '../../utils/enums';
 import { merge } from '../../utils/functions';
-import {NgWizardStepComponent} from "../wizard-step/ng-wizard-step.component";
+import { NgWizardStepComponent } from '../wizard-step/ng-wizard-step.component';
 
 @Component({
   selector: 'ng-wizard',
   templateUrl: './ng-wizard.component.html',
   styleUrls: ['./ng-wizard.component.css'],
+  imports: [NgClass],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class NgWizardComponent implements OnDestroy, AfterContentInit {
+export class NgWizardComponent implements AfterContentInit {
+  private readonly ngWizardDataService = inject(NgWizardDataService);
 
-  @ContentChildren(NgWizardStep)
-  public steps!: QueryList<NgWizardStepComponent>;
+  // Signal inputs / outputs
+  readonly pConfig = input<NgWizardOptions>({}, { alias: 'config' });
+  readonly stepChanged = output<StepChangedArgs>();
+  readonly themeChanged = output<THEME>();
+  readonly reseted = output<void>();
 
-  _pConfig?: NgWizardOptions;
-  get pConfig(): NgWizardOptions {
-    return this._pConfig || {};
-  }
+  // Signal content query
+  readonly steps = contentChildren(NgWizardStepComponent, { descendants: true });
 
-  @Input('config')
-  set pConfig(config: NgWizardOptions) {
-    this._pConfig = config;
-  }
+  // All mutable state as signals
+  readonly config = signal<NgWizardConfig | undefined>(undefined);
+  readonly currentStepIndex = signal<number | null>(null);
+  readonly currentStep = signal<NgWizardStepComponent | undefined>(undefined);
+  readonly isLoading = signal(false);
 
-  config!: NgWizardConfig;
+  // Style signals
+  readonly mainClass = computed(() => {
+    const cfg = this.config();
+    const base = cfg ? 'ng-wizard-main ng-wizard-theme-' + cfg.theme : 'ng-wizard-main';
+    return this.isLoading() ? base + ' ng-wizard-loading' : base;
+  });
 
-  @Output() stepChanged = new EventEmitter<StepChangedArgs>();
-  @Output() themeChanged = new EventEmitter<THEME>();
-  @Output() reseted = new EventEmitter<void>();
+  readonly stepClass = computed(() => {
+    const cfg = this.config();
+    let cls = 'nav-item';
+    if (cfg?.anchorSettings.enableAllAnchors && cfg?.anchorSettings.anchorClickable) {
+      cls += ' clickable';
+    }
+    return cls;
+  });
 
-  styles: {
-    main?: string;
-    step?: string;
-    previousButton?: string;
-    nextButton?: string;
-    toolbarTop?: string;
-    toolbarBottom?: string;
-  } = {};
+  readonly toolbarTopClass = computed(() => {
+    const cfg = this.config();
+    return cfg ? 'btn-toolbar ng-wizard-toolbar ng-wizard-toolbar-top justify-content-' + cfg.toolbarSettings.toolbarButtonPosition : '';
+  });
 
-  showToolbarTop: boolean = false;
-  showPreviousButton: boolean = false;
-  showNextButton: boolean = false;
-  showToolbarBottom: boolean = false;
-  showExtraButtons: boolean = false;
-  currentStepIndex: number|null = null; // Active step index
-  currentStep?: NgWizardStep; // Active step
+  readonly toolbarBottomClass = computed(() => {
+    const cfg = this.config();
+    return cfg ? 'btn-toolbar ng-wizard-toolbar ng-wizard-toolbar-bottom justify-content-' + cfg.toolbarSettings.toolbarButtonPosition : '';
+  });
 
-  resetWizardWatcher?: Subscription;
-  showNextStepWatcher?: Subscription;
-  showPreviousStepWatcher?: Subscription;
-  showStepWatcher?: Subscription;
-  setThemeWatcher?: Subscription;
+  readonly previousButtonClass = computed(() => {
+    const base = 'btn btn-secondary ng-wizard-btn-prev';
+    const cfg = this.config();
+    if (!cfg?.cycleSteps) {
+      const idx = this.currentStepIndex();
+      if (idx === null || idx <= 0) return base + ' disabled';
+    }
+    return base;
+  });
 
-  constructor(private ngWizardDataService: NgWizardDataService) {
+  readonly nextButtonClass = computed(() => {
+    const base = 'btn btn-secondary ng-wizard-btn-next';
+    const cfg = this.config();
+    if (!cfg?.cycleSteps) {
+      const idx = this.currentStepIndex();
+      if (idx === null || idx >= this.steps().length - 1) return base + ' disabled';
+    }
+    return base;
+  });
+
+  readonly showToolbarTop = computed(() => {
+    const pos = this.config()?.toolbarSettings.toolbarPosition;
+    return pos === TOOLBAR_POSITION.top || pos === TOOLBAR_POSITION.both;
+  });
+
+  readonly showToolbarBottom = computed(() => {
+    const pos = this.config()?.toolbarSettings.toolbarPosition;
+    return pos === TOOLBAR_POSITION.bottom || pos === TOOLBAR_POSITION.both;
+  });
+
+  readonly showPreviousButton = computed(() => this.config()?.toolbarSettings.showPreviousButton ?? false);
+  readonly showNextButton = computed(() => this.config()?.toolbarSettings.showNextButton ?? false);
+  readonly showExtraButtons = computed(() => {
+    const buttons = this.config()?.toolbarSettings.toolbarExtraButtons;
+    return !!buttons && buttons.length > 0;
+  });
+
+  constructor() {
+    this.ngWizardDataService.resetWizard$
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this._reset());
+
+    this.ngWizardDataService.showNextStep$
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this._showNextStep());
+
+    this.ngWizardDataService.showPreviousStep$
+      .pipe(takeUntilDestroyed())
+      .subscribe(() => this._showPreviousStep());
+
+    this.ngWizardDataService.showStep$
+      .pipe(takeUntilDestroyed())
+      .subscribe(index => this._showStep(index));
+
+    this.ngWizardDataService.setTheme$
+      .pipe(takeUntilDestroyed())
+      .subscribe(theme => this._setTheme(theme));
   }
 
   ngAfterContentInit() {
     this._backupStepStates();
-
     this._init();
-
-    // Set toolbar
-    this._setToolbar();
-
-    // Assign plugin events
-    this._setEvents();
-
-    this.resetWizardWatcher = this.ngWizardDataService.resetWizard$.subscribe(() => this._reset());
-    this.showNextStepWatcher = this.ngWizardDataService.showNextStep$.subscribe(() => this._showNextStep());
-    this.showPreviousStepWatcher = this.ngWizardDataService.showPreviousStep$.subscribe(() => this._showPreviousStep());
-    this.showStepWatcher = this.ngWizardDataService.showStep$.subscribe(index => this._showStep(index));
-    this.setThemeWatcher = this.ngWizardDataService.setTheme$.subscribe(theme => this._setTheme(theme));
   }
 
   _init() {
-    // set config
-    let defaultConfig = this.ngWizardDataService.getDefaultConfig();
-    this.config = merge(defaultConfig, this.pConfig);
+    const defaultConfig = this.ngWizardDataService.getDefaultConfig();
+    this.config.set(merge(defaultConfig, this.pConfig()));
 
-    // set step states
     this._initSteps();
-
-    // Set the elements
-    this._initStyles();
-
-    // Show the initial step
-    this._showStep(this.config.selected);
+    this._showStep(this.config()!.selected);
   }
 
   _initSteps() {
-    this.steps.forEach((step, index) => {
-      step.index = index;
-      step.status = step.status || STEP_STATUS.untouched;
-      step.state = step.state || STEP_STATE.normal;
+    const cfg = this.config()!;
+    const stepsArr = this.steps();
+    stepsArr.forEach((step, index) => {
+      step.index.set(index);
+      if (step.state() === undefined) {
+        step.state.set(step.inputState() || STEP_STATE.normal);
+      }
     });
 
-    // Mark previous steps of the active step as done
-    if (this.config.selected > 0
-      && this.config.anchorSettings.markDoneStep
-      && this.config.anchorSettings.markAllPreviousStepsAsDone) {
-
-      this.steps.forEach(step => {
-        if (step.state != STEP_STATE.disabled && step.state != STEP_STATE.hidden) {
-          step.status = step.index < this.config.selected ? STEP_STATUS.done : step.status;
+    if (cfg.selected > 0 && cfg.anchorSettings.markDoneStep && cfg.anchorSettings.markAllPreviousStepsAsDone) {
+      stepsArr.forEach(step => {
+        if (step.state() != STEP_STATE.disabled && step.state() != STEP_STATE.hidden) {
+          if (step.index() < cfg.selected) {
+            step.status.set(STEP_STATUS.done);
+          }
         }
       });
     }
   }
 
   _backupStepStates() {
-    this.steps.forEach(step => {
-      step.initialStatus = step.status;
-      step.initialState = step.state;
+    this.steps().forEach(step => {
+      step.initialStatus.set(step.status());
+      step.initialState.set(step.state());
     });
   }
 
   _restoreStepStates() {
-    this.steps.forEach(step => {
-      step.status = step.initialStatus;
-      step.state = step.initialState;
+    this.steps().forEach(step => {
+      step.status.set(step.initialStatus());
+      step.state.set(step.initialState());
     });
   }
 
-  // PRIVATE FUNCTIONS
-  _initStyles() {
-    // Set the main element
-    this.styles.main = 'ng-wizard-main ng-wizard-theme-' + this.config.theme;
+  _getStepCssClass(selectedStep: NgWizardStepComponent) {
+    let cls = this.stepClass();
 
-    // Set anchor elements
-    this.styles.step = 'nav-item'; // li
-
-    // Make the anchor clickable
-    if (this.config.anchorSettings.enableAllAnchors && this.config.anchorSettings.anchorClickable) {
-      this.styles.step += ' clickable';
+    switch (selectedStep.state()) {
+      case STEP_STATE.disabled: cls += ' disabled'; break;
+      case STEP_STATE.error: cls += ' danger'; break;
+      case STEP_STATE.hidden: cls += ' hidden'; break;
     }
 
-    // Set the toolbar styles
-    this.styles.toolbarTop = 'btn-toolbar ng-wizard-toolbar ng-wizard-toolbar-top justify-content-' + this.config.toolbarSettings.toolbarButtonPosition;
-    this.styles.toolbarBottom = 'btn-toolbar ng-wizard-toolbar ng-wizard-toolbar-bottom justify-content-' + this.config.toolbarSettings.toolbarButtonPosition;
-
-    // Set previous&next buttons
-    this.styles.previousButton = 'btn btn-secondary ng-wizard-btn-prev';
-    this.styles.nextButton = 'btn btn-secondary ng-wizard-btn-next';
-  }
-
-  _setToolbar() {
-    this.showToolbarTop = this.config.toolbarSettings.toolbarPosition == TOOLBAR_POSITION.top ||
-      this.config.toolbarSettings.toolbarPosition == TOOLBAR_POSITION.both;
-
-    this.showToolbarBottom = this.config.toolbarSettings.toolbarPosition == TOOLBAR_POSITION.bottom ||
-      this.config.toolbarSettings.toolbarPosition == TOOLBAR_POSITION.both;
-
-    this.showPreviousButton = this.config.toolbarSettings.showPreviousButton;
-    this.showNextButton = this.config.toolbarSettings.showNextButton;
-
-    this.showExtraButtons = this.config.toolbarSettings.toolbarExtraButtons && this.config.toolbarSettings.toolbarExtraButtons.length > 0;
-  }
-
-  _setEvents() {
-    //TODO: keyNavigation
-    // Keyboard navigation event
-    if (this.config.keyNavigation) {
-      // $(document).keyup(function (e) {
-      //   mi._keyNav(e);
-      // });
-    }
-  }
-
-  _getStepCssClass(selectedStep: NgWizardStep) {
-    let stepClass = this.styles.step;
-
-    switch (selectedStep.state) {
-      case STEP_STATE.disabled:
-        stepClass += ' disabled';
-        break;
-      case STEP_STATE.error:
-        stepClass += ' danger';
-        break;
-      case STEP_STATE.hidden:
-        stepClass += ' hidden';
-        break;
+    switch (selectedStep.status()) {
+      case STEP_STATUS.done: cls += ' done'; break;
+      case STEP_STATUS.active: cls += ' active'; break;
     }
 
-    switch (selectedStep.status) {
-      case STEP_STATUS.done:
-        stepClass += ' done';
-        break;
-      case STEP_STATUS.active:
-        stepClass += ' active';
-        break;
-    }
-
-    return stepClass;
+    return cls;
   }
 
-  _showSelectedStep(event: Event, selectedStep: NgWizardStep) {
+  _showSelectedStep(event: Event, selectedStep: NgWizardStepComponent) {
     event.preventDefault();
+    const cfg = this.config()!;
 
-    if (!this.config.anchorSettings.anchorClickable) {
-      return;
-    }
+    if (!cfg.anchorSettings.anchorClickable) return;
+    if (!cfg.anchorSettings.enableAnchorOnDoneStep && selectedStep.status() == STEP_STATUS.done) return;
 
-    if (!this.config.anchorSettings.enableAnchorOnDoneStep && selectedStep.status == STEP_STATUS.done) {
-      return true;
-    }
-
-    if (selectedStep.index != this.currentStepIndex) {
-      if (this.config.anchorSettings.enableAllAnchors && this.config.anchorSettings.anchorClickable) {
-        return this._showStep(selectedStep.index);
-      }
-      else {
-        if (selectedStep.status == STEP_STATUS.done) {
-          return this._showStep(selectedStep.index);
-        }
+    if (selectedStep.index() != this.currentStepIndex()) {
+      if (cfg.anchorSettings.enableAllAnchors && cfg.anchorSettings.anchorClickable) {
+        this._showStep(selectedStep.index());
+      } else if (selectedStep.status() == STEP_STATUS.done) {
+        this._showStep(selectedStep.index());
       }
     }
-    return;
   }
 
   _showNextStep(event?: Event) {
-    if (event) {
-      event.preventDefault();
-    }
-    // Find the next not disabled & hidden step
-    let filteredSteps = this.steps.filter(step => {
-      return step.index > (this.currentStepIndex == null ? -1 : this.currentStepIndex)
-        && step.state != STEP_STATE.disabled
-        && step.state != STEP_STATE.hidden;
-    });
+    if (event) event.preventDefault();
+
+    const stepsArr = this.steps();
+    const filteredSteps = stepsArr.filter(step =>
+      step.index() > (this.currentStepIndex() ?? -1)
+      && step.state() != STEP_STATE.disabled
+      && step.state() != STEP_STATE.hidden
+    );
 
     if (filteredSteps.length == 0) {
-      if (!this.config.cycleSteps) {
-        return;
-      }
-
-      this._showStep(0)
-    }
-    else {
-      this._showStep(filteredSteps.shift()?.index ?? -1)
+      if (!this.config()!.cycleSteps) return;
+      this._showStep(0);
+    } else {
+      this._showStep(filteredSteps[0].index());
     }
   }
 
   _showPreviousStep(event?: Event) {
-    if (event) {
-      event.preventDefault();
-    }
-    // Find the previous not disabled & hidden step
-    let filteredSteps = this.steps.filter(step => {
-      return step.index < ((this.currentStepIndex === null && this.config.cycleSteps ? this.steps.length : this.currentStepIndex)??0)
-        && step.state != STEP_STATE.disabled
-        && step.state != STEP_STATE.hidden;
-    });
+    if (event) event.preventDefault();
+
+    const stepsArr = this.steps();
+    const cfg = this.config()!;
+    const upperBound = (this.currentStepIndex() === null && cfg.cycleSteps ? stepsArr.length : this.currentStepIndex()) ?? 0;
+
+    const filteredSteps = stepsArr.filter(step =>
+      step.index() < upperBound
+      && step.state() != STEP_STATE.disabled
+      && step.state() != STEP_STATE.hidden
+    );
 
     if (filteredSteps.length == 0) {
-      if (!this.config.cycleSteps) {
-        return;
-      }
-
-      this._showStep(this.steps.length - 1)
-    }
-    else {
-      this._showStep(filteredSteps?.pop()?.index ?? -1)
+      if (!cfg.cycleSteps) return;
+      this._showStep(stepsArr.length - 1);
+    } else {
+      this._showStep(filteredSteps[filteredSteps.length - 1].index());
     }
   }
 
   _showStep(selectedStepIndex: number) {
+    const stepsArr = this.steps();
 
-    console.log('_showStep', selectedStepIndex, this.steps.length, this.currentStepIndex);
+    if (selectedStepIndex >= stepsArr.length || selectedStepIndex < 0) return;
+    if (selectedStepIndex == this.currentStepIndex()) return;
 
-    // If step not found, skip
-    if (selectedStepIndex >= this.steps.length || selectedStepIndex < 0) {
-      return;
-    }
+    const selectedStep = stepsArr[selectedStepIndex];
+    if (selectedStep.state() == STEP_STATE.disabled || selectedStep.state() == STEP_STATE.hidden) return;
 
-    // If current step is requested again, skip
-    if (selectedStepIndex == this.currentStepIndex) {
-      return;
-    }
+    this.isLoading.set(true);
 
-    let selectedStep = this.steps.toArray()[selectedStepIndex];
-
-    // If it is a disabled or hidden step, skip
-    if (selectedStep.state == STEP_STATE.disabled || selectedStep.state == STEP_STATE.hidden) {
-      return;
-    }
-
-    this._showLoader();
-
-    return lastValueFrom(this._isStepChangeValid(selectedStep, this.currentStep?.canExit))
+    return lastValueFrom(this._isStepChangeValid(selectedStep, this.currentStep()?.canExit()))
       .then(isValid => {
         if (isValid) {
-          return lastValueFrom(this._isStepChangeValid(selectedStep, selectedStep.canEnter));
+          return lastValueFrom(this._isStepChangeValid(selectedStep, selectedStep.canEnter()));
         }
-
         return lastValueFrom(of(isValid));
       })
       .then(isValid => {
         if (isValid) {
-          // Load step content
           this._loadStepContent(selectedStep);
         }
       })
-      .finally(() => this._hideLoader());
+      .finally(() => {
+        this.isLoading.set(false);
+      });
   }
 
-  private _isStepChangeValid(selectedStep: NgWizardStep|undefined, condition?: CanEnterExistArgs): Observable<boolean> {
-    if (condition && typeof condition === typeof true) {
-      return of(<boolean>condition);
-    }
+  private _isStepChangeValid(selectedStep: NgWizardStepComponent, condition?: CanEnterExitArgs): Observable<boolean> {
+    if (typeof condition === 'boolean') return of(condition);
 
-    else if (condition && condition instanceof Function && selectedStep?.index && this.currentStep) {
-      let direction = this._getStepDirection(selectedStep.index);
-      let result: boolean | Observable<boolean> = of(false);
-      if(direction) {
-        result = condition({ direction: direction, fromStep: this.currentStep, toStep: selectedStep });
-      }
+    if (typeof condition === 'function') {
+      const curStep = this.currentStep();
+      const direction = this._getStepDirection(selectedStep.index());
+      if (!direction || !curStep) return of(true);
 
-      if (isObservable(result)) {
-        return result as Observable<boolean>;
-      }
-      else if (typeof result === typeof true) {
-        return of(<boolean>result);
-      }
-      else {
-        return of(false);
-      }
+      const result = condition({ direction, fromStep: curStep.toStepData(), toStep: selectedStep.toStepData() });
+
+      if (isObservable(result)) return result as Observable<boolean>;
+      if (typeof result === 'boolean') return of(result);
+      return of(false);
     }
 
     return of(true);
   }
 
-  _loadStepContent(selectedStep: NgWizardStep) {
-    // Update controls
+  _loadStepContent(selectedStep: NgWizardStepComponent) {
     this._setAnchor(selectedStep);
-    // Set the buttons based on the step
-    this._setButtons(selectedStep.index);
 
-    // Trigger "stepChanged" event
-    const args = <StepChangedArgs>{
-      step: selectedStep,
-      previousStep: this.currentStep,
-      direction: this._getStepDirection(selectedStep.index),
-      position: this._getStepPosition(selectedStep.index)
+    const args: StepChangedArgs = {
+      step: selectedStep.toStepData(),
+      previousStep: this.currentStep()?.toStepData() ?? selectedStep.toStepData(),
+      direction: this._getStepDirection(selectedStep.index()) ?? STEP_DIRECTION.forward,
+      position: this._getStepPosition(selectedStep.index()),
     };
     this.stepChanged.emit(args);
     this.ngWizardDataService.stepChanged(args);
 
-    // Update the current index
-    this.currentStepIndex = selectedStep.index;
-    this.currentStep = selectedStep;
+    this.currentStepIndex.set(selectedStep.index());
+    this.currentStep.set(selectedStep);
   }
 
-  _setAnchor(selectedStep: NgWizardStep) {
-    // Current step anchor > Remove other classes and add done class
-    if (this.currentStep) {
-      this.currentStep.status = STEP_STATUS.untouched;
+  _setAnchor(selectedStep: NgWizardStepComponent) {
+    const curStep = this.currentStep();
+    if (curStep) {
+      curStep.status.set(STEP_STATUS.untouched);
 
-      if (this.config.anchorSettings.markDoneStep) {
-        this.currentStep.status = STEP_STATUS.done;
+      if (this.config()!.anchorSettings.markDoneStep) {
+        curStep.status.set(STEP_STATUS.done);
 
-        if (this.config.anchorSettings.removeDoneStepOnNavigateBack) {
-          this.steps.forEach(step => {
-            if (step.index > selectedStep.index) {
-              step.status = STEP_STATUS.untouched;
+        if (this.config()!.anchorSettings.removeDoneStepOnNavigateBack) {
+          this.steps().forEach(step => {
+            if (step.index() > selectedStep.index()) {
+              step.status.set(STEP_STATUS.untouched);
             }
           });
         }
       }
     }
 
-    // Next step anchor > Remove other classes and add active class
-    selectedStep.status = STEP_STATUS.active;
-  }
-
-  _setButtons(index: number) {
-    // Previous/Next Button enable/disable based on step
-    if (!this.config.cycleSteps) {
-      if (0 >= index) {
-        this.styles.previousButton = 'btn btn-secondary ng-wizard-btn-prev disabled';
-      }
-      else {
-        this.styles.previousButton = 'btn btn-secondary ng-wizard-btn-prev';
-      }
-
-      if (this.steps.length - 1 <= index) {
-        this.styles.nextButton = 'btn btn-secondary ng-wizard-btn-next disabled';
-      }
-      else {
-        this.styles.nextButton = 'btn btn-secondary ng-wizard-btn-next';
-      }
-    }
+    selectedStep.status.set(STEP_STATUS.active);
   }
 
   _extraButtonClicked(button: ToolbarButton) {
-    if (button.event) {
-      button.event();
-    }
+    if (button.event) button.event();
   }
 
-  // HELPER FUNCTIONS
-  _keyNav(event: KeyboardEvent) {
-    // Keyboard navigation
-    switch (event.which) {
-      case 37:
-        // left
-        this._showPreviousStep(event);
-        event.preventDefault();
-        break;
-      case 39:
-        // right
-        this._showNextStep(event);
-        event.preventDefault();
-        break;
-      default:
-        return; // exit this handler for other keys
-    }
+  private _getStepDirection(selectedStepIndex: number): STEP_DIRECTION | null {
+    const idx = this.currentStepIndex();
+    return (idx != null && idx != selectedStepIndex)
+      ? (idx < selectedStepIndex ? STEP_DIRECTION.forward : STEP_DIRECTION.backward)
+      : null;
   }
 
-  _showLoader() {
-    this.styles.main = 'ng-wizard-main ng-wizard-theme-' + this.config.theme + ' ng-wizard-loading';
+  private _getStepPosition(selectedStepIndex: number): STEP_POSITION {
+    return selectedStepIndex == 0
+      ? STEP_POSITION.first
+      : (selectedStepIndex == this.steps().length - 1 ? STEP_POSITION.final : STEP_POSITION.middle);
   }
 
-  _hideLoader() {
-    this.styles.main = 'ng-wizard-main ng-wizard-theme-' + this.config.theme;
-  }
-
-  _getStepDirection(selectedStepIndex: number): STEP_DIRECTION|null {
-    return (this.currentStepIndex != null && this.currentStepIndex != selectedStepIndex) ?
-      (this.currentStepIndex < selectedStepIndex ? STEP_DIRECTION.forward : STEP_DIRECTION.backward) : null;
-  }
-
-  _getStepPosition(selectedStepIndex: number): STEP_POSITION {
-    return (selectedStepIndex == 0) ? STEP_POSITION.first : (selectedStepIndex == this.steps.length - 1 ? STEP_POSITION.final : STEP_POSITION.middle);
-  }
-
-  // PUBLIC FUNCTIONS
   _setTheme(theme: THEME) {
-    if (this.config.theme == theme) {
-      return false;
-    }
+    const cfg = this.config();
+    if (!cfg || cfg.theme == theme) return;
 
-    this.config.theme = theme;
-    this.styles.main = 'ng-wizard-main ng-wizard-theme-' + this.config.theme;
-
-    // Trigger "themeChanged" event
-    this.themeChanged.emit(this.config.theme);
-    return;
+    this.config.set({ ...cfg, theme });
+    this.themeChanged.emit(theme);
   }
 
   _reset() {
-    // Reset all elements and classes
-    this.currentStepIndex = null;
-    this.currentStep = undefined;
+    this.currentStepIndex.set(null);
+    this.currentStep.set(undefined);
     this._restoreStepStates();
     this._init();
-
-    // Trigger "reseted" event
     this.reseted.emit();
-  }
-
-  ngOnDestroy() {
-    if (this.resetWizardWatcher) {
-      this.resetWizardWatcher.unsubscribe();
-    }
-
-    if (this.showNextStepWatcher) {
-      this.showNextStepWatcher.unsubscribe();
-    }
-
-    if (this.showPreviousStepWatcher) {
-      this.showPreviousStepWatcher.unsubscribe();
-    }
-
-    if (this.showStepWatcher) {
-      this.showStepWatcher.unsubscribe();
-    }
-
-    if (this.setThemeWatcher) {
-      this.setThemeWatcher.unsubscribe();
-    }
   }
 }

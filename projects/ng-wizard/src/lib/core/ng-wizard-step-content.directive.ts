@@ -1,11 +1,8 @@
-import { Directive, ViewContainerRef } from '@angular/core';
+import { Directive, inject, ViewContainerRef } from '@angular/core';
 
 @Directive({
-  selector: '[ngWizardStepContent]'
+  selector: '[ngWizardStepContent]',
 })
 export class NgWizardStepContentDirective {
-  constructor(
-    public viewContainerRef: ViewContainerRef,
-  ) {
-  }
+  readonly viewContainerRef = inject(ViewContainerRef);
 }

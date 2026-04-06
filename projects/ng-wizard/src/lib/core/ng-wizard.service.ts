@@ -1,18 +1,18 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Signal, inject } from '@angular/core';
+import { Observable } from 'rxjs';
 
 import { NgWizardDataService } from './ng-wizard-data.service';
 import { THEME } from '../utils/enums';
-import { Observable } from 'rxjs';
 import { StepChangedArgs } from '../utils/interfaces';
 
 @Injectable({
   providedIn: 'root'
 })
 export class NgWizardService {
-  constructor(
-    private ngWizardDataService: NgWizardDataService
-  ) {
-  }
+  private readonly ngWizardDataService = inject(NgWizardDataService);
+
+  /** Signal with latest step change info (null until first step change). */
+  readonly stepChangedArgs: Signal<StepChangedArgs | null> = this.ngWizardDataService.stepChangedArgs;
 
   reset() {
     this.ngWizardDataService.resetWizard();
@@ -34,6 +34,7 @@ export class NgWizardService {
     this.ngWizardDataService.setTheme(theme);
   }
 
+  /** @deprecated Use the stepChangedArgs signal instead. */
   stepChanged(): Observable<StepChangedArgs> {
     return this.ngWizardDataService.stepChangedArgs$;
   }

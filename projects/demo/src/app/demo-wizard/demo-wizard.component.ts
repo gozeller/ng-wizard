@@ -1,20 +1,29 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 
 import { DemoWizardService, StepDefinition } from './services/demo-wizard.service';
 import {
   NgWizardOptions,
   NgWizardService,
+  NgWizardComponent,
+  NgWizardStepComponent,
   STEP_STATE,
   StepChangedArgs,
   THEME
 } from "ng-wizard";
+import { StepSixComponent } from './steps/step-6/step-six.component';
 
 @Component({
   selector: 'app-demo-wizard',
+  imports: [FormsModule, NgWizardComponent, NgWizardStepComponent, StepSixComponent],
   templateUrl: './demo-wizard.component.html',
-  styleUrls: ['./demo-wizard.component.css']
+  styleUrls: ['./demo-wizard.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DemoWizardComponent implements OnInit {
+  private readonly ngWizardService = inject(NgWizardService);
+  private readonly demoWizardService = inject(DemoWizardService);
+
   config: NgWizardOptions;
   stepDefinitions: StepDefinition[];
 
@@ -25,10 +34,7 @@ export class DemoWizardComponent implements OnInit {
   selectedTheme?: THEME;
   selectedStepIndex?: number;
 
-  constructor(
-    private ngWizardService: NgWizardService,
-    private demoWizardService: DemoWizardService,
-  ) {
+  constructor() {
     this.config = this.demoWizardService.config;
     this.stepDefinitions = this.demoWizardService.stepDefinitions;
 
@@ -69,19 +75,18 @@ export class DemoWizardComponent implements OnInit {
   resetWizard(event?: Event) {
     this.selectedTheme = this.config.theme;
     this.selectedStepIndex = this.config.selected;
-
     this.ngWizardService.reset();
   }
 
   themeSelected() {
-    if(this.selectedTheme) {
-        this.ngWizardService.theme(this.selectedTheme);
+    if (this.selectedTheme) {
+      this.ngWizardService.theme(this.selectedTheme);
     }
   }
 
   stepIndexSelected() {
-    if(this.selectedStepIndex!==undefined && this.selectedStepIndex>=0) {
-        this.ngWizardService.show(this.selectedStepIndex);
+    if (this.selectedStepIndex !== undefined && this.selectedStepIndex >= 0) {
+      this.ngWizardService.show(this.selectedStepIndex);
     }
   }
 }

@@ -1,4 +1,5 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 
 import { NgWizardComponent } from './ng-wizard.component';
 
@@ -6,14 +7,12 @@ describe('NgWizardComponent', () => {
   let component: NgWizardComponent;
   let fixture: ComponentFixture<NgWizardComponent>;
 
-  beforeEach(async(() => {
-    TestBed.configureTestingModule({
-      declarations: [ NgWizardComponent ]
-    })
-    .compileComponents();
-  }));
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [NgWizardComponent],
+      providers: [provideZonelessChangeDetection()],
+    }).compileComponents();
 
-  beforeEach(() => {
     fixture = TestBed.createComponent(NgWizardComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();

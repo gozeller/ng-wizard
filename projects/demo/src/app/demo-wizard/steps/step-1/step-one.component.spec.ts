@@ -1,4 +1,5 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideZonelessChangeDetection } from '@angular/core';
 
 import { StepOneComponent } from './step-one.component';
 
@@ -6,14 +7,12 @@ describe('StepOneComponent', () => {
   let component: StepOneComponent;
   let fixture: ComponentFixture<StepOneComponent>;
 
-  beforeEach(async(() => {
-    TestBed.configureTestingModule({
-      declarations: [ StepOneComponent ]
-    })
-    .compileComponents();
-  }));
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [StepOneComponent],
+      providers: [provideZonelessChangeDetection()],
+    }).compileComponents();
 
-  beforeEach(() => {
     fixture = TestBed.createComponent(StepOneComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();

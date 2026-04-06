@@ -1,7 +1,7 @@
 {
   "name": "@gozella/ng-wizard",
-  "description": "Angular ng-wizard FORK - Angular wizard | stepper, Angular 15, Bootstrap 5.3",
-  "version": "2.0.10",
+  "description": "Angular ng-wizard FORK - Angular wizard | stepper, Angular 21, Bootstrap 5.3",
+  "version": "4.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/gozeller/ng-wizard.git"
@@ -17,8 +17,8 @@
   "license": "MIT",
   "private": false,
   "peerDependencies": {
-    "@angular/common": "^15.2.0",
-    "@angular/core": "^15.2.0"
+    "@angular/common": "^21.0.0",
+    "@angular/core": "^21.0.0"
   },
   "dependencies": {
     "tslib": "^2.3.0"

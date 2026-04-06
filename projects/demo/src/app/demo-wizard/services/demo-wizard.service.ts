@@ -9,16 +9,18 @@ import { StepFiveComponent } from '../steps/step-5/step-five.component';
 import {
   NgWizardOptions,
   STEP_STATE,
-  THEME, CanEnterExistArgs, StepValidationArgs
+  THEME,
+  CanEnterExitArgs,
+  StepValidationArgs,
 } from "ng-wizard";
 
 export interface StepDefinition {
   title: string;
   description: string;
   state?: STEP_STATE;
-  component: Type<any>;
-  canEnter?: CanEnterExistArgs;
-  canExit?: CanEnterExistArgs;
+  component: Type<unknown>;
+  canEnter?: CanEnterExitArgs;
+  canExit?: CanEnterExitArgs;
 }
 
 @Injectable()
@@ -72,27 +74,27 @@ export class DemoWizardService {
     },
   ];
 
-  private validateStep(type: string, args: StepValidationArgs): boolean|Observable<boolean> {
-    let step = type == 'entry' ? args.toStep : args.fromStep;
-    let stepSpecificValidateMethod;
+  private validateStep(type: string, args: StepValidationArgs): boolean | Observable<boolean> {
+    const step = type === 'entry' ? args.toStep : args.fromStep;
+    let stepSpecificValidateMethod: unknown;
 
-    if (step && step.componentRef) {
-      stepSpecificValidateMethod = type == 'entry' ? step.componentRef.instance.validateEntryToStep : step.componentRef.instance.validateExitFromStep;
+    if (step?.componentRef) {
+      const instance = (step.componentRef as { instance: Record<string, unknown> }).instance;
+      stepSpecificValidateMethod = type === 'entry'
+        ? instance['validateEntryToStep']
+        : instance['validateExitFromStep'];
     }
 
     if (stepSpecificValidateMethod) {
-      if (typeof stepSpecificValidateMethod === typeof true) {
-        return <boolean>stepSpecificValidateMethod;
-      }
-      else if (stepSpecificValidateMethod instanceof Function && step.componentRef) {
-        stepSpecificValidateMethod = stepSpecificValidateMethod.bind(step.componentRef.instance);
-        let result = stepSpecificValidateMethod();
+      if (typeof stepSpecificValidateMethod === 'boolean') {
+        return stepSpecificValidateMethod;
+      } else if (typeof stepSpecificValidateMethod === 'function') {
+        const result: unknown = stepSpecificValidateMethod();
 
         if (isObservable(result)) {
           return result as Observable<boolean>;
-        }
-        else if (typeof result === typeof true) {
-          return <boolean>result;
+        } else if (typeof result === 'boolean') {
+          return result;
         }
       }
     }
@@ -100,4 +102,3 @@ export class DemoWizardService {
     return true;
   }
 }
-

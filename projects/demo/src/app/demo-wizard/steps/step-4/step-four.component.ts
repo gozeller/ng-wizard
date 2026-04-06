@@ -1,15 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 
 @Component({
   selector: 'app-step-four',
   templateUrl: './step-four.component.html',
-  styleUrls: ['./step-four.component.css']
+  styleUrls: ['./step-four.component.css'],
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class StepFourComponent implements OnInit {
-  constructor(
-  ) {
-  }
-
-  ngOnInit(): void {
-  }
-}
+export class StepFourComponent {}

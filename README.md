@@ -1,21 +1,124 @@
 # ng-wizard
 
-This is a fork of <https://github.com/abdulkadirgenc/ng-wizard> with some improvements for Angular 15 and Bootstrap 5.3
+> **Fork of [abdulkadirgenc/ng-wizard](https://github.com/abdulkadirgenc/ng-wizard)**, modernized for Angular 21.
 
-This library was generated with [Angular CLI](https://github.com/angular/angular-cli) version 15.2.0
+An Angular wizard / stepper component built on Bootstrap 5.
 
-Installation:
+## What's different from the original?
 
+This fork has been fully rewritten for modern Angular while keeping the same look, feel, and feature set:
+
+- **Angular 21** (originally Angular 8)
+- **Standalone components** — no NgModules
+- **Signal-based** — `input()`, `output()`, `contentChildren()`, `signal()`, `computed()`
+- **Zoneless** — no zone.js, uses `provideZonelessChangeDetection()`
+- **OnPush** change detection on every component
+- **Modern template syntax** — `@if`, `@for` (no `*ngIf` / `*ngFor`)
+- **Bootstrap 5.3** (originally Bootstrap 4)
+
+See the [Changelog](#changelog) below for the full history.
+
+## Installation
+
+```bash
+npm install ng-wizard
 ```
-$ npm install @gozella/ng-wizard
+
+## Setup
+
+### 1. Provide the wizard configuration
+
+In your application bootstrap (e.g. `main.ts`):
+
+```typescript
+import { bootstrapApplication } from '@angular/platform-browser';
+import { provideZonelessChangeDetection } from '@angular/core';
+import { provideNgWizard, THEME } from 'ng-wizard';
+
+import { AppComponent } from './app/app.component';
+
+bootstrapApplication(AppComponent, {
+  providers: [
+    provideZonelessChangeDetection(),
+    provideNgWizard({ theme: THEME.arrows }),
+  ],
+});
 ```
 
-## Todos
+### 2. Import CSS
 
-+ make it use (bootstrap) css variables or switch to scss
+Include Bootstrap and the wizard theme CSS files in your global styles (e.g. `styles.css`):
 
-# ng-wizard - original README.md content:
-ng-wizard is a stepper / wizard component that you can use in your Angular applications. You can access the sample demo project **[by clicking here](https://ng-wizard.stackblitz.io)**.
+```css
+@import 'bootstrap/dist/css/bootstrap.css';
+
+/* Required */
+@import 'ng-wizard/themes/ng_wizard.css';
+
+/* Optional — include only the themes you use */
+@import 'ng-wizard/themes/ng_wizard_theme_arrows.css';
+@import 'ng-wizard/themes/ng_wizard_theme_circles.css';
+@import 'ng-wizard/themes/ng_wizard_theme_dots.css';
+```
+
+### 3. Use in your component
+
+```typescript
+import { Component } from '@angular/core';
+import { NgWizardComponent, NgWizardStepComponent, NgWizardService, STEP_STATE, THEME, StepChangedArgs } from 'ng-wizard';
+
+@Component({
+  selector: 'app-my-wizard',
+  imports: [NgWizardComponent, NgWizardStepComponent],
+  template: `
+    <ng-wizard [config]="config" (stepChanged)="onStepChanged($event)">
+      <ng-wizard-step [title]="'Step 1'" [description]="'First step'">
+        <p>Step 1 content</p>
+      </ng-wizard-step>
+
+      <ng-wizard-step [title]="'Step 2'" [description]="'Second step'">
+        <p>Step 2 content</p>
+      </ng-wizard-step>
+
+      <ng-wizard-step [title]="'Step 3'" [description]="'Third step'" [state]="STEP_STATE.disabled">
+        <p>This step is disabled</p>
+      </ng-wizard-step>
+    </ng-wizard>
+  `,
+})
+export class MyWizardComponent {
+  STEP_STATE = STEP_STATE;
+
+  config = {
+    theme: THEME.arrows,
+  };
+
+  onStepChanged(args: StepChangedArgs) {
+    console.log('Step changed:', args.step.title);
+  }
+}
+```
+
+## Programmatic control
+
+Use `NgWizardService` to control the wizard from your code:
+
+```typescript
+import { inject } from '@angular/core';
+import { NgWizardService } from 'ng-wizard';
+
+// In your component:
+private wizardService = inject(NgWizardService);
+
+this.wizardService.next();
+this.wizardService.previous();
+this.wizardService.show(2);       // go to step index 2
+this.wizardService.reset();
+this.wizardService.theme(THEME.dots);
+
+// Reactive step tracking via signal:
+const lastStep = this.wizardService.stepChangedArgs(); // Signal<StepChangedArgs | null>
+```
 
 ## Screenshots
 
@@ -27,214 +130,80 @@ ng-wizard is a stepper / wizard component that you can use in your Angular appli
 
 ![Dots](/Screenshots/4_dots.png)
 
-## Dependencies
-+ [Bootstrap 4](https://getbootstrap.com/docs/4.3/getting-started/download/)
-
-
-## Getting started
-Install **ng-wizard** through npm:
-```
-$ npm install --save ng-wizard
-```
-
-Include **bootstrap** CSS file (skip if already imported):
-```css
-@import '~bootstrap/dist/css/bootstrap.min.css';
-```
-
-Include **ng-wizard** CSS files:
-```css
-/* Mandatory */
-@import '~ng-wizard/themes/ng_wizard.min.css';
-
-/* Optional */
-/* If a theme other than default is used, the css file for that theme is required. */
-@import '~ng-wizard/themes/ng_wizard_theme_arrows.min.css';
-@import '~ng-wizard/themes/ng_wizard_theme_circles.min.css';
-@import '~ng-wizard/themes/ng_wizard_theme_dots.min.css';
-```
-
-Import the **ng-wizard module** into your apps module:
-```typescript
-import { NgModule } from '@angular/core';
-
-import { NgWizardModule, NgWizardConfig, THEME } from 'ng-wizard';
-
-const ngWizardConfig: NgWizardConfig = {
-  theme: THEME.default
-};
-
-@NgModule({
-  imports: [
-    NgWizardModule.forRoot(ngWizardConfig)
-  ]
-})
-export class AppModule { }
-```
-
-Add an **ng-wizard** component to the html template of your component:
-```html
-<ng-wizard [config]="config" (stepChanged)="stepChanged($event)">
-  
-  <ng-wizard-step [title]="'Step 1'" [description]="'Step 1 description'"
-    [canEnter]="isValidTypeBoolean" [canExit]="isValidFunctionReturnsBoolean.bind(this)">
-    <span>Step 1 content</span>
-  </ng-wizard-step>
-  
-  <ng-wizard-step [title]="'Step 2'" [description]="'Step 2 description'" [state]="stepStates.disabled">
-    <span>Step 2 content</span>
-  </ng-wizard-step>
-  
-  <ng-wizard-step [title]="'Step 3'" [description]="'Step 3 description'"
-    [canEnter]="isValidFunctionReturnsObservable.bind(this)" [canExit]="isValidFunctionReturnsBoolean.bind(this)">
-    <span>Step 3 content</span>
-  </ng-wizard-step>
-
-<ng-wizard-step [title]="'Step 4'" [description]="'Step 4 description'">
-    <span>Step 4 content</span>
-  </ng-wizard-step>
-
-  <ng-wizard-step [title]="'Step 5'" [description]="'Step 5 description'" [state]="stepStates.hidden">
-    <span>Step 5 content</span>
-  </ng-wizard-step>
-  
-  <ng-wizard-step [title]="'Step 6'" [description]="'Step 6 description'" [state]="stepStates.error">
-    <span>Step 6 content</span>
-  </ng-wizard-step>
-  
-  <ng-wizard-step [title]="'Step 7'" [description]="'Step 7 description'">
-    <span>Step 7 content</span>
-  </ng-wizard-step>
-</ng-wizard>
-```
-
-
-`[config]` is an optional parameter for **ng-wizard** component.
-
-If you want to override **ng-wizard** default configuration defined in **apps module** for a specific component, define `[config]` parameter in your **\*\*\*.component.ts** file.
-```typescript
-import { Component, OnInit } from '@angular/core';
-import { of } from 'rxjs';
-import { NgWizardConfig, NgWizardService, StepChangedArgs, StepValidationArgs, STEP_STATE, THEME } from 'ng-wizard';
-
-@Component({
-  templateUrl: 'app.component.html'
-})
-export class AppComponent implements OnInit {
-  stepStates = {
-    normal: STEP_STATE.normal,
-    disabled: STEP_STATE.disabled,
-    error: STEP_STATE.error,
-    hidden: STEP_STATE.hidden
-  };
-
-  config: NgWizardConfig = {
-    selected: 0,
-    theme: THEME.arrows,
-    toolbarSettings: {
-      toolbarExtraButtons: [
-        { text: 'Finish', class: 'btn btn-info', event: () => { alert("Finished!!!"); } }
-      ],
-    }
-  };
-
-  constructor(private ngWizardService: NgWizardService) {
-  }
-
-  ngOnInit() {
-  }
-
-  showPreviousStep(event?: Event) {
-    this.ngWizardService.previous();
-  }
-
-  showNextStep(event?: Event) {
-    this.ngWizardService.next();
-  }
-
-  resetWizard(event?: Event) {
-    this.ngWizardService.reset();
-  }
-
-  setTheme(theme: THEME) {
-    this.ngWizardService.theme(theme);
-  }
-
-  stepChanged(args: StepChangedArgs) {
-    console.log(args.step);
-  }
-
-  isValidTypeBoolean: boolean = true;
-
-  isValidFunctionReturnsBoolean(args: StepValidationArgs) {
-    return true;
-  }
-
-  isValidFunctionReturnsObservable(args: StepValidationArgs) {
-    return of(true);
-  }
-}
-
-```
-
 ## Configuration
-### `NgWizardStep` parameters:
-#### Input parameters:
 
-| Name        | Type                                                                                                      | Default Value       | Description                                                                  |
-| ----------- | --------------------------------------------------------------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------- |
-| title       | `string`                                                                                                  |                     | Step title                                                                   |
-| description | `string`                                                                                                  |                     | Step description                                                             |
-| state       | `STEP_STATE`                                                                                              | `STEP_STATE.normal` | Step State (normal, disabled, error, hidden)                                 |
-| component   | `Component`                                                                                               |                     | A component can be defined for step content.                                 |
-| canExit     | `boolean | ((args: StepValidationArgs) => boolean) | ((args: StepValidationArgs) => Observable<boolean>)` |                     | Validation for transition from step                                          |
-| canEnter    | `boolean | ((args: StepValidationArgs) => boolean) | ((args: StepValidationArgs) => Observable<boolean>)` |                     | Validation for transition to step                                            |
+### `NgWizardStepComponent` inputs
 
-#### Output parameters:
+| Name        | Type                       | Default              | Description                              |
+| ----------- | -------------------------- | -------------------- | ---------------------------------------- |
+| title       | `string` (required)        |                      | Step title                               |
+| description | `string`                   | `''`                 | Step description                         |
+| state       | `STEP_STATE`               | `STEP_STATE.normal`  | Step state (normal, disabled, error, hidden) |
+| component   | `Type<unknown>`            |                      | Dynamic component for step content       |
+| canEnter    | `CanEnterExitArgs`         |                      | Validation for entering the step         |
+| canExit     | `CanEnterExitArgs`         |                      | Validation for leaving the step          |
 
-| Name          | Type           | Default Value | Description                                                                                     |
-| ------------  | -------------- | ------------- | ----------------------------------------------------------------------------------------------- |
-| index         | `number`       |               | Step Index                                                                                      |
-| status        | `STEP_STATUS`  |               | Step Status (untouched, done, active)                                                           |
-| initialStatus | `STEP_STATUS`  |               | Initial Step Status (untouched, done, active)                                                   |
-| initialState  | `STEP_STATE`   |               | Step State (normal, disabled, error, hidden)                                                    |
-| componentRef  | `ComponentRef` |               | If the component input parameter is given, it is used to access the instance of this component. |
+`CanEnterExitArgs` can be a `boolean`, a function returning `boolean`, or a function returning `Observable<boolean>`.
 
-### `NgWizardConfig` properties:
+### `NgWizardConfig` properties
 
-| Name            | Type                                 | Default Value                                                                                                                                                                 | Description                                                                  |
-| --------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| selected        | `number`                             | `0`                                                                                                                                                                           | Initial selected step                                                        |
-| keyNavigation   | `boolean`                            | `true`                                                                                                                                                                        | Enable/Disable keyboard navigation (left and right keys are used if enabled) |
-| cycleSteps      | `boolean`                            | `false`                                                                                                                                                                       | Allows to cycle the navigation of steps                                      |
-| lang            | `{ next: string, previous: string }` | `{ next: 'Next', previous: 'Previous' }`                                                                                                                                      | Language variables for buttons                                               |
-| toolbarSettings | `ToolbarSettings`                    | `{ toolbarPosition: TOOLBAR_POSITION.bottom, toolbarButtonPosition: TOOLBAR_BUTTON_POSITION.end, showNextButton: true, showPreviousButton: true, toolbarExtraButtons: [] }`   | Toolbar settings                                                             |
-| anchorSettings  | `AnchorSettings`                     | `{ anchorClickable: true, enableAllAnchors: false, markDoneStep: true, markAllPreviousStepsAsDone: true, removeDoneStepOnNavigateBack: false, enableAnchorOnDoneStep: true }` | Anchor settings                                                              |
-| theme           | `THEME`                              | `THEME.default`                                                                                                                                                               | Wizard theme (default, arrows, circles, dots)                                |
+| Name            | Type              | Default           | Description                             |
+| --------------- | ----------------- | ----------------- | --------------------------------------- |
+| selected        | `number`          | `0`               | Initially selected step                 |
+| keyNavigation   | `boolean`         | `true`            | Enable keyboard navigation (arrow keys) |
+| cycleSteps      | `boolean`         | `false`           | Allow cycling through steps             |
+| lang            | `Language`        | `{ next: 'Next', previous: 'Previous' }` | Button labels |
+| toolbarSettings | `ToolbarSettings` | *(see below)*     | Toolbar configuration                   |
+| anchorSettings  | `AnchorSettings`  | *(see below)*     | Step anchor configuration               |
+| theme           | `THEME`           | `THEME.default`   | Wizard theme                            |
 
-### `ToolbarSettings` properties:
+### Themes
 
-| Name                  | Type                      | Default Value                 | Description                                                       |
-| --------------------- | ------------------------- | ----------------------------- | ----------------------------------------------------------------- |
-| toolbarPosition       | `TOOLBAR_POSITION`        | `TOOLBAR_POSITION.bottom`     | Toolbar position (none, top, bottom, both)                        |
-| toolbarButtonPosition | `TOOLBAR_BUTTON_POSITION` | `TOOLBAR_BUTTON_POSITION.end` | Toolbar button position (start, end)                              |
-| showNextButton        | `boolean`                 | `true`                        | show/hide Next button                                             |
-| showPreviousButton    | `boolean`                 | `true`                        | show/hide Previous button                                         |
-| toolbarExtraButtons   | `ToolbarButton[]`         | `[]`                          | Extra buttons to show on toolbar, array of input/buttons elements |
+- `THEME.default`
+- `THEME.arrows`
+- `THEME.circles`
+- `THEME.dots`
 
-### `AnchorSettings` properties:
+## Migration from earlier versions
 
-| Name                         | Type        | Default Value | Description                                                     |
-| ---------------------------- | ----------- | ------------- | --------------------------------------------------------------- |
-| anchorClickable              | `boolean`   | `true`        | Enable/Disable anchor navigation                                |
-| enableAllAnchors             | `boolean`   | `false`       | Activates all anchors clickable all times                       |
-| markDoneStep                 | `boolean`   | `true`        | Add done css                                                    |
-| markAllPreviousStepsAsDone   | `boolean`   | `true`        | When a step selected, all previous steps are marked done        |
-| removeDoneStepOnNavigateBack | `boolean`   | `false`       | While navigate back done step after active step will be cleared |
-| enableAnchorOnDoneStep       | `boolean[]` | `true`        | Enable/Disable the done steps navigation                        |
+If you're upgrading from the original `ng-wizard` package or from earlier versions of this fork:
 
-## Thanks
-This component was created by rewriting the [jQuery Smart Wizard 4](https://github.com/techlab/SmartWizard) in Angular. Thanks to [TechLaboratory](http://www.techlaboratory.net/) for **.Css** files.
+1. **Replace `NgWizardModule.forRoot(config)`** with `provideNgWizard(config)` in your providers.
+2. **Import components directly** — add `NgWizardComponent` and `NgWizardStepComponent` to your component's `imports` array.
+3. **Remove `NgWizardModule`** from all imports — it no longer exists.
+4. **`NgWizardStep` abstract class** has been replaced by the `NgWizardStepData` interface.
+5. **`CanEnterExistArgs`** has been renamed to `CanEnterExitArgs` (old name still works as a deprecated alias).
+6. **`NgWizardService.stepChanged()`** (Observable) is deprecated — use the `stepChangedArgs` signal instead.
+
+## Changelog
+
+### 4.0.0 (2026-04-06)
+
+Modernized fork — full rewrite of internals for Angular 21, no changes to the visual appearance or CSS.
+
+- **Angular 21** — upgraded from Angular 15
+- **Standalone components** — removed all NgModules (`NgWizardModule` deleted)
+- **`provideNgWizard()`** — new provider function replaces `NgWizardModule.forRoot()`
+- **Signal-based API** — all `@Input()`, `@Output()`, `@ViewChild()`, `@ContentChildren()`, `@HostBinding()` replaced with signal equivalents (`input()`, `output()`, `viewChild()`, `contentChildren()`, `host: {}`)
+- **Zoneless** — no zone.js dependency, works with `provideZonelessChangeDetection()`
+- **OnPush** — `ChangeDetectionStrategy.OnPush` on every component
+- **Modern templates** — `@if`/`@for` instead of `*ngIf`/`*ngFor`
+- **`inject()` function** — replaces all constructor parameter injection
+- **`takeUntilDestroyed()`** — replaces manual subscription cleanup
+- **`NgWizardStepData` interface** — replaces `NgWizardStep` abstract directive class
+- **`CanEnterExitArgs`** — renamed from `CanEnterExistArgs` (deprecated alias kept)
+- **`NgWizardService.stepChangedArgs`** — new signal property for reactive step tracking
+- **TypeScript 5.9**, Bootstrap 5.3
+
+### 2.0.10
+
+- Fork of [abdulkadirgenc/ng-wizard](https://github.com/abdulkadirgenc/ng-wizard)
+- Upgraded to Angular 15, Bootstrap 5.3
+
+## Credits
+
+This component was originally created by [Abdulkadir Genç](https://github.com/abdulkadirgenc/ng-wizard) by rewriting [jQuery Smart Wizard 4](https://github.com/techlab/SmartWizard) in Angular. CSS themes by [TechLaboratory](http://www.techlaboratory.net/).
 
 ## License
-[MIT License](https://github.com/abdulkadirgenc/ng-wizard/blob/master/LICENSE)
+
+[MIT License](https://github.com/gozeller/ng-wizard/blob/master/LICENSE)
