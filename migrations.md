@@ -75,15 +75,13 @@ All spec files run green under zoneless change detection (5 library + 10 demo sp
 - [x] Replace `declarations` with `imports` in `TestBed.configureTestingModule()` (no `declarations` remain)
 - [x] Remove `async()` from `@angular/core/testing` (only native `async () =>` arrow functions remain)
 
-## Remaining: Modernization Phases
+## Completed: Cleanup (Phase 2)
 
-### Phase 2: Cleanup
-
-- [ ] Remove empty `ngOnInit()` / `implements OnInit` where unused
-- [ ] Remove empty constructors
-- [ ] Replace `styleUrls` (array) with `styleUrl` (singular)
-- [ ] Eliminate all remaining `any` types
-- [ ] Delete `.angular/cache` old build artifacts
+- [x] Remove empty `ngOnInit()` / `implements OnInit` where unused — none found; every remaining `ngOnInit` (NgWizardStepComponent, DemoWizardComponent) holds real init logic, so nothing to remove
+- [x] Remove empty constructors — none found; all three constructors (NgWizardComponent, NgWizardDataService, DemoWizardComponent) hold real logic
+- [x] Replace `styleUrls` (array) with `styleUrl` (singular) — converted in all 10 components
+- [x] Eliminate all remaining `any` types — `merge()` in `utils/functions.ts` retyped to `<T extends object>` with localized `unknown` casts; no `any` remains in library or demo source
+- [x] Delete `.angular/cache` old build artifacts — removed (273 MB; gitignored, regenerates on build)
 
 ## Breaking Changes for Library Consumers
 

@@ -21,7 +21,7 @@ import { NgWizardStepComponent } from '../wizard-step/ng-wizard-step.component';
 @Component({
   selector: 'ng-wizard',
   templateUrl: './ng-wizard.component.html',
-  styleUrls: ['./ng-wizard.component.css'],
+  styleUrl: './ng-wizard.component.css',
   imports: [NgClass],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

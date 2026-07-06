@@ -17,7 +17,7 @@ import { StepSixComponent } from './steps/step-6/step-six.component';
   selector: 'app-demo-wizard',
   imports: [FormsModule, NgWizardComponent, NgWizardStepComponent, StepSixComponent],
   templateUrl: './demo-wizard.component.html',
-  styleUrls: ['./demo-wizard.component.css'],
+  styleUrl: './demo-wizard.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DemoWizardComponent implements OnInit {

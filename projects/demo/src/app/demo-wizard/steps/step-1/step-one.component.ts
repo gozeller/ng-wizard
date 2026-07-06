@@ -4,7 +4,7 @@ import { of } from 'rxjs';
 @Component({
   selector: 'app-step-one',
   templateUrl: './step-one.component.html',
-  styleUrls: ['./step-one.component.css'],
+  styleUrl: './step-one.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StepOneComponent {

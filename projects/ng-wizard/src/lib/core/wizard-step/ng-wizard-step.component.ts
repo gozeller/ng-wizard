@@ -6,7 +6,7 @@ import { NgWizardStepContentDirective } from '../ng-wizard-step-content.directiv
 @Component({
   selector: 'ng-wizard-step[title]',
   templateUrl: './ng-wizard-step.component.html',
-  styleUrls: ['./ng-wizard-step.component.css'],
+  styleUrl: './ng-wizard-step.component.css',
   imports: [NgWizardStepContentDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   host: {
