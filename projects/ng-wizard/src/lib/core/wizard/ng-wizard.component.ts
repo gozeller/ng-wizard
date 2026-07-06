@@ -1,6 +1,6 @@
 import {
   Component, AfterContentInit, ChangeDetectionStrategy,
-  input, output, contentChildren, signal, computed, inject,
+  input, output, contentChildren, signal, computed, inject, DestroyRef,
 } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -27,6 +27,8 @@ import { NgWizardStepComponent } from '../wizard-step/ng-wizard-step.component';
 })
 export class NgWizardComponent implements AfterContentInit {
   private readonly ngWizardDataService = inject(NgWizardDataService);
+  private readonly destroyRef = inject(DestroyRef);
+  private destroyed = false;
 
   // Signal inputs / outputs
   readonly pConfig = input<NgWizardOptions>({}, { alias: 'config' });
@@ -107,6 +109,8 @@ export class NgWizardComponent implements AfterContentInit {
   });
 
   constructor() {
+    this.destroyRef.onDestroy(() => (this.destroyed = true));
+
     this.ngWizardDataService.resetWizard$
       .pipe(takeUntilDestroyed())
       .subscribe(() => this._reset());
@@ -267,12 +271,17 @@ export class NgWizardComponent implements AfterContentInit {
         return lastValueFrom(of(isValid));
       })
       .then(isValid => {
-        if (isValid) {
+        // The validation chain is async; if the component was destroyed while it
+        // was pending, bail out — emitting outputs or writing signals now would
+        // trigger NG0953 (emit on a destroyed OutputRef) in zoneless mode.
+        if (isValid && !this.destroyed) {
           this._loadStepContent(selectedStep);
         }
       })
       .finally(() => {
-        this.isLoading.set(false);
+        if (!this.destroyed) {
+          this.isLoading.set(false);
+        }
       });
   }
 

@@ -12,7 +12,7 @@
 
     @if (showToolbarTop()) {
         <div [ngClass]="toolbarTopClass()">
-            <div class="btn-group mr-2 ng-wizard-btn-group" role="group">
+            <div class="btn-group me-2 ng-wizard-btn-group" role="group">
                 @if (showPreviousButton()) {
                     <button [ngClass]="previousButtonClass()" type="button"
                         (click)="_showPreviousStep($event)">{{ config()!.lang!.previous }}</button>
@@ -24,7 +24,7 @@
             </div>
 
             @if (showExtraButtons()) {
-                <div class="btn-group mr-2 ng-wizard-btn-group-extra" role="group">
+                <div class="btn-group me-2 ng-wizard-btn-group-extra" role="group">
                     @for (button of config()!.toolbarSettings!.toolbarExtraButtons; track button.text) {
                         <button [ngClass]="button.class" type="button"
                             (click)="_extraButtonClicked(button)">{{ button.text }}</button>
