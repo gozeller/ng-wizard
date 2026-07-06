@@ -1,7 +1,7 @@
 {
   "name": "@gozella/ng-wizard",
   "description": "Angular ng-wizard FORK - Angular wizard | stepper, Angular 21, Bootstrap 5.3",
-  "version": "4.0.0",
+  "version": "21.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/gozeller/ng-wizard.git"
